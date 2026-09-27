@@ -1,7 +1,7 @@
 # Fuji
 An astronomical orbit calculator and visualizer tool
 
-<img src="imgs/earth-mars-transfer.png" alt="Earth to Mars transfer orbit demo" width="400">
+<img src="imgs/earth-mars-transfer.png" alt="Earth to Mars transfer orbit demo" width="600">
 *Visualization shows Earth to Mars transfer orbit*
 
 ### Features
