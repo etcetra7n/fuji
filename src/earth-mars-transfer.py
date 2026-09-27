@@ -1,4 +1,4 @@
-# main.py
+# heliocentric.py
 
 import spiceypy as spice
 import fuji
@@ -23,13 +23,6 @@ earth_state, _ = spice.spkezr(
     "NONE",
     "SUN"
 )
-moon_state, _ = spice.spkezr(
-    "MOON",
-    et,
-    "J2000",
-    "NONE",
-    "EARTH"
-)
 spice.kclear()
 
 mars_position_m = mars_state[:3] * 1000
@@ -38,26 +31,17 @@ mars_velocity_m_s = mars_state[3:] * 1000
 earth_position_m = earth_state[:3] * 1000
 earth_velocity_m_s = earth_state[3:] * 1000
 
-moon_position_relative_m = moon_state[:3] * 1000
-moon_velocity_relative_m_s = moon_state[3:] * 1000
-
-# ---------------------------------------
-# Moon -> Sun centered frame
-# ---------------------------------------
-
-moon_position_m = (
-    earth_position_m +
-    moon_position_relative_m
+sun = fuji.CelestialBody(
+    name="Sun",
+    color="#FDB813",
+    mass=1.9885e30,
+    radius=6.9634e8,
+    position=[0.0, 0.0, 0.0],
+    velocity=[0.0, 0.0, 0.0]
 )
-moon_velocity_m_s = (
-    earth_velocity_m_s +
-    moon_velocity_relative_m_s
-)
-
-
 mars = fuji.CelestialBody(
     name="Mars",
-    color="red",
+    color="#D14A3A",
     mass=6.4171e23,
     radius=3.3895e6,
     position=mars_position_m,
@@ -65,25 +49,40 @@ mars = fuji.CelestialBody(
 )
 earth = fuji.CelestialBody(
     name="Earth",
-    color="blue",
+    color="#4A90E2",
     mass=5.9722e24,
     radius=6.371e6,
     position=earth_position_m,
     velocity=earth_velocity_m_s
 )
-sun = fuji.CelestialBody(
-    name="Sun",
-    color="yellow",
-    mass=1.9885e30,
-    radius=6.9634e8,
-    position=[0.0, 0.0, 0.0],
-    velocity=[0.0, 0.0, 0.0]
+sat1 = fuji.CelestialBody(
+    name="Sat1",
+    color="#FFFFFF",
+    mass=1000.0,
+    radius=10000.0,
+    position=earth.position + [0.0, 6.371e6 + 1000e6, 0.0],
+    velocity=earth.velocity + earth.circular_orbit_velocity(1000e6)
 )
 
-system = fuji.CelestialSystem([sun, earth, mars])
+system = fuji.CelestialSystem([sun, earth, mars, sat1])
+
+v1, v2 = system.lambert(
+    departure_body="Sat1",
+    arrival_body="Mars",
+    central_body="Sun",
+    dt=260,
+    tof=270 * 24 * 3600
+)
+print(f"Departure velocity: {v1}")
+print(f"Arrival velocity: {v2}")
+system.add_impulse(
+    body="Sat1",
+    delta_v=v1 - sat1.velocity
+)
 
 system.launch_sim(
-    duration=1 * 365 * 24 * 3600,
-    animation_duration=25,
-    dt=3600
+    duration=275 * 24 * 3600,
+    animation_duration=20,
+    dt=260,
+    exaggeration_factor=10
 )
