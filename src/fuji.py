@@ -63,7 +63,6 @@ class CelestialSystem:
     def propagate(self, dt):
         n = len(self.bodies)
 
-        # Calculate accelerations at the current positions
         accelerations = [
             np.zeros(3, dtype=np.float64)
             for _ in range(n)
@@ -98,7 +97,6 @@ class CelestialSystem:
                 accelerations[i] += acceleration_i
                 accelerations[j] += acceleration_j
 
-        # Velocity Verlet: update positions
         for i, body in enumerate(self.bodies):
             body.position[:] += (
                 body.velocity * dt
@@ -231,7 +229,7 @@ class CelestialSystem:
         ]
 
         # ---------------------------------------
-        # Physics simulation
+        # Physics sim
         # ---------------------------------------
 
         for step in range(steps):
@@ -275,10 +273,6 @@ class CelestialSystem:
         actors = []
         trail_actors = []
 
-        # ---------------------------------------
-        # Create bodies
-        # ---------------------------------------
-
         for i, body in enumerate(self.bodies):
 
             position = trajectories[i][0]
@@ -303,7 +297,6 @@ class CelestialSystem:
                 radius=radius,
                 center=(0, 0, 0)
             )
-
             actor = plotter.add_mesh(
                 sphere,
                 color=color,
@@ -313,9 +306,9 @@ class CelestialSystem:
             actor.position = position
             actors.append(actor)
 
-            # ----------------------------------- #
-            # FULL ORBIT - DOTTED 
-            # ----------------------------------- 
+            # -----------------------------------
+            # DOTTED ORBIT
+            # -----------------------------------
             orbit_points = trajectories[i]
             dotted_points = orbit_points[::dot_spacing]
             orbit_dots = pv.PolyData(dotted_points) 
@@ -328,7 +321,7 @@ class CelestialSystem:
             )
 
             # -----------------------------------
-            # Dynamic trail
+            # Trail
             # -----------------------------------
 
             trail_points = trajectories[i][0:1]
@@ -343,16 +336,7 @@ class CelestialSystem:
 
             trail_actors.append(trail_actor)
 
-        # ---------------------------------------
-        # Camera
-        # ---------------------------------------
-
         plotter.reset_camera()
-
-        # ---------------------------------------
-        # Animation
-        # ---------------------------------------
-
         visual_frames = max(
             2,
             int(animation_duration * fps)
@@ -372,12 +356,7 @@ class CelestialSystem:
             for i in range(len(self.bodies)):
                 position = trajectories[i][physics_frame]
 
-                # Move body
                 actors[i].position = position
-
-                # -----------------------------------
-                # Dynamic trail
-                # -----------------------------------
 
                 start = max(
                     0,
@@ -390,35 +369,26 @@ class CelestialSystem:
 
                 if len(points) >= 2:
 
-                    # Create connected line
                     lines = np.empty(
                         (len(points) - 1, 3),
                         dtype=np.int64
                     )
-
                     lines[:, 0] = 2
                     lines[:, 1] = np.arange(
                         len(points) - 1
                     )
-
                     lines[:, 2] = np.arange(
                         1,
                         len(points)
                     )
-
                     trail_mesh = pv.PolyData(
                         points,
                         lines=lines
                     )
-
                     trail_actors[i].mapper.SetInputData(
                         trail_mesh
                     )
             plotter.render()
-
-        # ---------------------------------------
-        # Timer
-        # ---------------------------------------
 
         plotter.iren.initialize()
         plotter.add_timer_event(
@@ -430,7 +400,6 @@ class CelestialSystem:
 
 
 def stumpff_C(z):
-    """Stumpff C(z)."""
     if z > 1e-8:
         s = np.sqrt(z)
         return (1.0 - np.cos(s)) / z
@@ -438,7 +407,6 @@ def stumpff_C(z):
         s = np.sqrt(-z)
         return (np.cosh(s) - 1.0) / (-z)
     else:
-        # Taylor expansion around z = 0
         return (
             1.0 / 2.0
             - z / 24.0
@@ -448,7 +416,6 @@ def stumpff_C(z):
 
 
 def stumpff_S(z):
-    """Stumpff S(z)."""
     if z > 1e-8:
         s = np.sqrt(z)
         return (s - np.sin(s)) / (s**3)
@@ -456,7 +423,6 @@ def stumpff_S(z):
         s = np.sqrt(-z)
         return (np.sinh(s) - s) / (s**3)
     else:
-        # Taylor expansion around z = 0
         return (
             1.0 / 6.0
             - z / 120.0
@@ -482,7 +448,6 @@ def lambert_universal(r1, r2, tof, mu, prograde=True):
     # ---------------------------------------------------------
     # Transfer angle
     # ---------------------------------------------------------
-
     cos_dtheta = np.dot(r1, r2) / (R1 * R2)
     cos_dtheta = np.clip(cos_dtheta, -1.0, 1.0)
 
@@ -502,7 +467,6 @@ def lambert_universal(r1, r2, tof, mu, prograde=True):
     # ---------------------------------------------------------
     # A parameter
     # ---------------------------------------------------------
-
     sin_dtheta = np.sin(dtheta)
 
     A = (
@@ -518,7 +482,6 @@ def lambert_universal(r1, r2, tof, mu, prograde=True):
     # ---------------------------------------------------------
     # Solve for universal variable z
     # ---------------------------------------------------------
-
     def y(z):
 
         C = stumpff_C(z)
@@ -561,7 +524,6 @@ def lambert_universal(r1, r2, tof, mu, prograde=True):
     # ---------------------------------------------------------
     # Find a bracket for z
     # ---------------------------------------------------------
-
     z_min = -4.0 * np.pi**2
     z_max = 4.0 * np.pi**2
 
@@ -596,7 +558,6 @@ def lambert_universal(r1, r2, tof, mu, prograde=True):
     # ---------------------------------------------------------
     # Bisection
     # ---------------------------------------------------------
-
     z_lo, z_hi = bracket
 
     for _ in range(200):
@@ -622,18 +583,13 @@ def lambert_universal(r1, r2, tof, mu, prograde=True):
     z = z_mid
 
     # ---------------------------------------------------------
-    # Calculate f and g Lagrange coefficients
+    # f and g Lagrange coefficients
     # ---------------------------------------------------------
-
     Y = y(z)
 
     f = 1.0 - Y / R1
     g = A * np.sqrt(Y / mu)
     gdot = 1.0 - Y / R2
-
-    # ---------------------------------------------------------
-    # Velocities
-    # ---------------------------------------------------------
 
     v1 = (r2 - f * r1) / g
     v2 = (gdot * r2 - r1) / g
